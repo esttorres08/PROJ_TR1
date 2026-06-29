@@ -72,6 +72,7 @@ def tratar_conexao(conn, addr):
 
         print("Mensagem recebida:", texto)
         conn.sendall((texto + '\n').encode())
+        conn.sendall((bits + '\n').encode())   # bits demodulados (como chegaram)
 
     finally:
         conn.close()

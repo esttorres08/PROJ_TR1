@@ -99,7 +99,7 @@ if enviar:
         st.markdown(f"**Bits enquadrados:** `{quadro1}` → `{quadro}`")
     else:
         st.markdown(f"**Bits enquadrados:** `{quadro}`")
-    st.markdown(f"**Bits com detecção de erro:** `{bits_codificados}`")
+    st.markdown(f"**Bits com código de erro:** `{bits_codificados}`")
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect(('localhost', 5000))
@@ -112,74 +112,15 @@ if enviar:
 
         file_like = s.makefile('r', encoding='utf-8')
         mensagem_final = file_like.readline().strip()
+        bits_rx = file_like.readline().strip()
         st.markdown(f"**Mensagem recebida no servidor:** `{mensagem_final}`")
 
+        # mostra os bits que chegaram, marcando em vermelho os que vieram errados
+        bits_marcados = ''.join(
+            f"<span style='color:#e24b4a;font-weight:700'>{b}</span>"
+            if i < len(bits_codificados) and b != bits_codificados[i] else b
+            for i, b in enumerate(bits_rx)
+        )
+        st.markdown(f"**Bits recebidos:** <code>{bits_marcados}</code>", unsafe_allow_html=True)
+
 # Botão "Testar com erro (Hamming)"
-# if testar:
-#     st.subheader("Resultados do Teste com Erro (Hamming)")
-
-#     link = Link()
-#     phy = PhysicalLayer()
-#     bits = phy.texto_para_bits(mensagem)
-
-#     if enquadramento == 'count':
-#         quadro = link.enquadrar_count(bits)
-#     elif enquadramento == 'bits':
-#         quadro = link.enquadrar_bitstuffing(bits)
-#     elif enquadramento == 'bytes':
-#         quadro1 = link.enquadrar_bytestuffing(mensagem)
-#         quadro = phy.texto_para_bits(quadro1)
-
-#     det = DeteccaoErros(deteccao)
-#     bits_codificados = det.adicionar(quadro)
-
-#     if deteccao == 'hamming':
-#         import random
-#         bits_lista = list(bits_codificados)
-#         idx = random.randint(0, len(bits_lista) - 1)
-#         bits_lista[idx] = '0' if bits_lista[idx] == '1' else '1'
-#         bits_codificados = ''.join(bits_lista)
-#         st.warning(f"Erro inserido na posição {idx}")
-
-#     if modulacao == 'nrz':
-#         sinal = phy.nrz_polar(bits_codificados, A=amplitude)
-#     elif modulacao == 'manchester':
-#         sinal = phy.manchester(bits_codificados, A=amplitude)
-#     elif modulacao == 'bipolar':
-#         sinal = phy.bipolar(bits_codificados, A=amplitude)
-#     elif modulacao == 'ask':
-#         sinal = phy.ask(bits_codificados, A=amplitude, f=frequencia)
-#     elif modulacao == 'fsk':
-#         sinal = phy.fsk(bits_codificados, f0=frequencia, f1=frequencia*2, A=amplitude)
-#     elif modulacao == 'psk':
-#         sinal = phy.psk(bits_codificados, A=amplitude, f=frequencia)
-#     elif modulacao == 'qam':
-#         sinal = phy.qam16(bits_codificados, A=amplitude, f=frequencia)
-
-#     sinal = phy.adicionar_ruido(sinal, ruido)
-
-#     fig = plt.figure(figsize=(10, 3))
-#     if modulacao in ['nrz', 'manchester', 'bipolar']:
-#         plt.step(range(len(sinal)*2), [v for x in sinal for v in (x, x)], where='post')
-#     else:
-#         plt.plot(phy.tempo, sinal)
-#     plt.title("Sinal com erro injetado")
-#     plt.xlabel("Tempo")
-#     plt.ylabel("Amplitude")
-#     plt.grid(True)
-#     st.pyplot(fig)
-
-#     st.markdown(f"**Bits com erro inserido:** `{bits_codificados}`")
-
-#     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-#         s.connect(('localhost', 5000))
-#         s.sendall(modulacao.encode() + b'\n')
-#         s.sendall(deteccao.encode() + b'\n')
-#         s.sendall(enquadramento.encode() + b'\n')
-#         s.sendall((str(amplitude) + '\n').encode())
-#         s.sendall((str(frequencia) + '\n').encode())
-#         s.sendall((','.join(map(str, sinal)) + '\n').encode())
-
-#         file_like = s.makefile('r', encoding='utf-8')
-#         mensagem_final = file_like.readline().strip()
-#         st.markdown(f"**Mensagem recebida no servidor:** `{mensagem_final}`")
