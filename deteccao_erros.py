@@ -66,41 +66,70 @@ class DeteccaoErros:
             return soma == 0xFFFF  # dados + checksum devem somar tudo-1s
         
 
-    # Função para a detectação e correção de erro Hamming
-    def hamming_codificar(self, bits: str) -> str:
-        resultado = ''
-        while len(bits) % 4 != 0:
-            bits += '0'  # Preenchimento se necessário
+    def _bits_paridade(self, m):
+        # menor r tal que 2^r >= m + r + 1
+        r = 0
+        while (2 ** r) < (m + r + 1):
+            r += 1
+        return r
 
-        for i in range(0, len(bits), 4):
-            d = list(bits[i:i+4])
-            d1, d2, d3, d4 = map(int, d)
-            p1 = d1 ^ d2 ^ d4
-            p2 = d1 ^ d3 ^ d4
-            p3 = d2 ^ d3 ^ d4
-            p4 = p1 ^ p2 ^ d1 ^ p3 ^ d2 ^ d3 ^ d4  # paridade geral
-            codigo = f"{p1}{p2}{d1}{p3}{d2}{d3}{d4}{p4}"
-            resultado += codigo
+    def hamming_codificar(self, bits, m=4):
+        r = self._bits_paridade(m)
+        n = m + r                      # tamanho do bloco codificado
+        pos_paridade = {2 ** j for j in range(r)}   # posicoes 1,2,4,8...
+
+        while len(bits) % m != 0:
+            bits += '0'               # padding p/ multiplo de m
+
+        resultado = ''
+        for ini in range(0, len(bits), m):
+            dados = bits[ini:ini + m]
+            cod = [0] * (n + 1)       # 1-indexado (ignora indice 0)
+
+            di = 0                    # preenche os dados nas posicoes nao-paridade
+            for pos in range(1, n + 1):
+                if pos not in pos_paridade:
+                    cod[pos] = int(dados[di])
+                    di += 1
+
+            for j in range(r):        # calcula cada bit de paridade
+                p = 2 ** j
+                paridade = 0
+                for pos in range(1, n + 1):
+                    if pos & p:
+                        paridade ^= cod[pos]
+                cod[p] = paridade
+
+            resultado += ''.join(str(cod[pos]) for pos in range(1, n + 1))
         return resultado
 
-        # Decodifica o Hamming
-    def hamming_decodificar(self, bits: str) -> str:
+    def hamming_decodificar(self, bits, m=4):
+        r = self._bits_paridade(m)
+        n = m + r
+        pos_paridade = {2 ** j for j in range(r)}
+
         resultado = ''
-        for i in range(0, len(bits), 8):
-            bloco = bits[i:i+8]
-            if len(bloco) < 8:
+        for ini in range(0, len(bits), n):
+            bloco = bits[ini:ini + n]
+            if len(bloco) < n:
                 continue
-            p1, p2, d1, p3, d2, d3, d4, p4 = map(int, bloco)
-            s1 = p1 ^ d1 ^ d2 ^ d4
-            s2 = p2 ^ d1 ^ d3 ^ d4
-            s3 = p3 ^ d2 ^ d3 ^ d4
-            posicao_erro = s3 * 4 + s2 * 2 + s1 * 1
-            bloco_corrigido = list(bloco)
-            if posicao_erro != 0 and 1 <= posicao_erro <= 8:
-                bloco_corrigido[posicao_erro - 1] = '0' if bloco_corrigido[posicao_erro - 1] == '1' else '1'
-            d1 = bloco_corrigido[2]
-            d2 = bloco_corrigido[4]
-            d3 = bloco_corrigido[5]
-            d4 = bloco_corrigido[6]
-            resultado += d1 + d2 + d3 + d4
+            cod = [0] + [int(b) for b in bloco]   # 1-indexado
+
+            sindrome = 0              # recalcula as paridades -> sindrome
+            for j in range(r):
+                p = 2 ** j
+                paridade = 0
+                for pos in range(1, n + 1):
+                    if pos & p:
+                        paridade ^= cod[pos]
+                if paridade:
+                    sindrome += p     # acumula a posicao do erro
+
+            if sindrome != 0 and sindrome <= n:
+                cod[sindrome] ^= 1    # corrige o bit apontado
+
+            # extrai so os dados (posicoes que nao sao paridade)
+            dados = ''.join(str(cod[pos]) for pos in range(1, n + 1)
+                            if pos not in pos_paridade)
+            resultado += dados
         return resultado
