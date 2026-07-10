@@ -1,7 +1,7 @@
 [project]
 name = "proj-tr1"
 version = "0.1.0"
-description = "Add your description here"
+description = "Simulador de camadas física e de enlace (modulação, enquadramento e detecção de erros) — TR1/UnB"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
